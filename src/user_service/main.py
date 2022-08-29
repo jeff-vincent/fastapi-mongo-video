@@ -12,5 +12,5 @@ async def session():
     return 'success'
 
 
-if __name__ == '__main__':
-    uvicorn.run(app, host='localhost', port=8001)
+# if __name__ == '__main__':
+#     uvicorn.run(app, host='localhost', port=8001)

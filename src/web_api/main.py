@@ -6,7 +6,7 @@ import uvicorn
 import views
 
 app = FastAPI()
-USER_IP = os.environ.get('USER_IP')
+USER_HOST = os.environ.get('USER_HOST')
 USER_PORT = os.environ.get('USER_PORT')
 
 @app.get('/')
@@ -16,7 +16,7 @@ async def index():
 @app.post('/sign-up')
 async def sign_up():
     async with aiohttp.ClientSession() as session:
-        async with session.post('http://localhost:8001/sign-up') as response:
+        async with session.post(f'http://{USER_HOST}:{USER_PORT}/sign-up') as response:
             r = await response.text()
 
     return HTMLResponse(views.index)
@@ -24,7 +24,7 @@ async def sign_up():
 @app.post('/login')
 async def login():
     async with aiohttp.ClientSession() as session:
-        async with session.post('http://localhost:8001/session') as response:
+        async with session.post(f'http://{USER_HOST}:{USER_PORT}/session') as response:
             r = await response.text()
    
     return HTMLResponse(views.index)
@@ -42,5 +42,5 @@ async def upload(file: UploadFile, background_tasks: BackgroundTasks):
 async def stream():
     pass
 
-if __name__ == '__main__':
-    uvicorn.run(app, host='localhost', port=8000)
+# if __name__ == '__main__':
+#     uvicorn.run(app, host='localhost', port=8000)
