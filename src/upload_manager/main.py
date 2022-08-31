@@ -82,4 +82,4 @@ async def stream(filename):
 app.add_middleware(SessionMiddleware, secret_key='abc')
 
 if __name__ == '__main__':
-    uvicorn.run(app, host='localhost', port=8000)
+    uvicorn.run(app, host='localhost', port=8001)
