@@ -7,7 +7,7 @@ app = FastAPI()
 async def sign_up():
     return 'success'
 
-@app.post('/session')
+@app.post('/authenticate')
 async def session():
     return 'success'
 
