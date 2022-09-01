@@ -1,3 +1,3 @@
 FROM python:3.10
-COPY ./src/user_service/ . 
+COPY ./src/authentication/ . 
 RUN pip install -r requirements.txt

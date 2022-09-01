@@ -20,13 +20,13 @@ index = """
         <div style="background-color: #707bb2; margin: 15px; border-radius: 5px; padding: 15px; width: 180px">
         <b>Sign Up:</b>
         <form action="/sign-up" method="post">
-            <p><input type=text name=username>
+            <p><input type=text name=email>
             <p><input type=text name=password>
             <p><input type=submit value="Sign-up">
         </form>
         <b>Login:</b>
         <form action="/login" method="post">
-            <p><input type=text name=username>
+            <p><input type=text name=email>
             <p><input type=text name=password>
             <p><input type=submit value="Login">
         </form>
