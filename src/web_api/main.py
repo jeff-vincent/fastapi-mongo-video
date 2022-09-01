@@ -1,8 +1,8 @@
 import os
+import binascii
 import aiohttp
-import json
 from fastapi import FastAPI, BackgroundTasks, UploadFile, Request, Form
-from fastapi.responses import  HTMLResponse, PlainTextResponse, StreamingResponse, RedirectResponse
+from fastapi.responses import  HTMLResponse, StreamingResponse
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorGridFSBucket
 from starlette.middleware.sessions import SessionMiddleware
 import views
@@ -14,13 +14,14 @@ AUTH_HOST = os.environ.get('AUTH_HOST')
 AUTH_PORT = os.environ.get('AUTH_PORT')
 
 @app.on_event('startup')
-async def get_fs():
+async def get_mongo():
     video_db = AsyncIOMotorClient(f'mongodb://{MONGO_HOST}:{MONGO_PORT}').video
+    app.library = video_db.library
     app.fs = AsyncIOMotorGridFSBucket(video_db)
 
 @app.get('/')
 async def index():
-    return HTMLResponse(views.index)
+    return HTMLResponse(views.sign_up_login_block)
 
 @app.post('/sign-up')
 async def sign_up(email: str = Form(), password: str = Form()):
@@ -30,11 +31,11 @@ async def sign_up(email: str = Form(), password: str = Form()):
             async with session.post(f'http://{AUTH_HOST}:{AUTH_PORT}/sign-up', data=user_data) as response:
                 r = await response.text()
     except Exception as e:
-        return PlainTextResponse(str(e))
+        return HTMLResponse(f'<h3>Error: {str(e)}</h3>{views.sign_up_login_block}')
 
     if '1' in r:
-        return HTMLResponse(f'<h3>An account already exists with that email</h3>{views.index}')
-    return HTMLResponse(views.index)
+        return HTMLResponse(f'<h3>An account already exists with that email</h3>{views.sign_up_login_block}')
+    return HTMLResponse(views.sign_up_login_block)
 
 @app.post('/login')
 async def login(request: Request, email: str = Form(), password: str = Form()):
@@ -45,21 +46,29 @@ async def login(request: Request, email: str = Form(), password: str = Form()):
                 r = await response.text()
                 print(r)
     except Exception as e:
-        return HTMLResponse(f'<h3>Error: {str(e)}</h3>{views.index}')
+        return HTMLResponse(f'<h3>Error: {str(e)}</h3>{views.sign_up_login_block}')
 
     if '1' in r:
-        return HTMLResponse(f'<h3>Login failed</h3>{views.index}')
+        return HTMLResponse(f'<h3>Login failed</h3>{views.sign_up_login_block}')
     request.session['email'] = email
-    return HTMLResponse(f'<h3>Logged in as "{email}"</h3>{views.index}')
+    videos = await _get_videos(email)
+    return HTMLResponse(f'<h3>Logged in as "{email}"</h3>{views.upload_block}{videos}{views.logout_block}')
 
 @app.get('/logout')
 async def logout(request: Request):
     request.session['email'] = None
-    return HTMLResponse(views.index)
+    return HTMLResponse(views.sign_up_login_block)
 
-async def _upload(file: object, email: str):
+async def _generate_hash():
+    return binascii.hexlify(os.urandom(16)).decode('utf-8')
+
+async def _add_library_record(email: str, hash: str):
+    data = {'email': email, 'filename': hash}
+    await app.library.insert_one(data)
+
+async def _upload(file: object, hash: str):
     grid_in = app.fs.open_upload_stream(
-        file.filename, metadata={'contentType': 'video/mp4', 'email': email})
+        hash, metadata={'contentType': 'video/mp4'})
     data = await file.read()
     await grid_in.write(data)
     await grid_in.close()  # uploaded on close
@@ -68,9 +77,12 @@ async def _upload(file: object, email: str):
 async def upload(request: Request, file: UploadFile, background_tasks: BackgroundTasks):
     if request.session['email']:
         if file.filename:
-            background_tasks.add_task(_upload, file, request.session['email'])
-            return HTMLResponse(f'<h3><a href="http://localhost/stream/{file.filename}" target="_blank">Play</a></h3>{views.index}')
-        return HTMLResponse(f'<h3>Please select a file to upload</h3>{views.index}')
+            hash = await _generate_hash()
+            background_tasks.add_task(_upload, file, hash)
+            background_tasks.add_task(_add_library_record, request.session['email'], hash)
+            videos = await _get_videos(request.session['email'])
+            return HTMLResponse(f'{views.upload_block}{videos}{views.logout_block}')
+        return HTMLResponse(f'<h3>Please select a file to upload</h3>{views.upload_block + views.logout_block}')
     return HTMLResponse(f'<h3>Please log in</h3>{views.index}')
 
 @app.get('/stream/{filename}')
@@ -85,5 +97,15 @@ async def stream(filename: str, request: Request):
         return StreamingResponse(read(), media_type='video/mp4', 
             headers={'Content-Length': str(grid_out.length)})
     return HTMLResponse(f'<h3>Please log in</h3>{views.index}')
+
+async def _get_videos(email: str):
+    videos = app.library.find({'email': email})
+    docs = await videos.to_list(None)
+    video_urls = ''
+    for i in docs:
+        filename = i['filename']
+        v = f'<a href="http://localhost/stream/{filename}" target="_blank">http://localhost/stream/{filename}</a>'
+        video_urls = video_urls + '<br>' + v
+    return video_urls
 
 app.add_middleware(SessionMiddleware, secret_key='abc')
