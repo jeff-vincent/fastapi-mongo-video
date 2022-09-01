@@ -1,10 +1,10 @@
 import os
 import aiohttp
+import json
 from fastapi import FastAPI, BackgroundTasks, UploadFile, Request, Form
-from fastapi.responses import  HTMLResponse, PlainTextResponse
+from fastapi.responses import  HTMLResponse, PlainTextResponse, StreamingResponse, RedirectResponse
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorGridFSBucket
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.responses import StreamingResponse
 import views
 
 app = FastAPI()
@@ -33,8 +33,8 @@ async def sign_up(email: str = Form(), password: str = Form()):
         return PlainTextResponse(str(e))
 
     if '1' in r:
-        return 'sign up failed'
-    return 'sign up succeeded'
+        return HTMLResponse(f'<h3>An account already exists with that email</h3>{views.index}')
+    return HTMLResponse(views.index)
 
 @app.post('/login')
 async def login(request: Request, email: str = Form(), password: str = Form()):
@@ -43,23 +43,23 @@ async def login(request: Request, email: str = Form(), password: str = Form()):
         async with aiohttp.ClientSession() as session:
             async with session.post(f'http://{AUTH_HOST}:{AUTH_PORT}/login', data=user_data) as response:
                 r = await response.text()
+                print(r)
     except Exception as e:
-        return PlainTextResponse(str(e))
+        return HTMLResponse(f'<h3>Error: {str(e)}</h3>{views.index}')
 
     if '1' in r:
-        return 'login failed'
+        return HTMLResponse(f'<h3>Login failed</h3>{views.index}')
     request.session['email'] = email
-    return 'login succeeded'
+    return HTMLResponse(f'<h3>Logged in as "{email}"</h3>{views.index}')
 
 @app.get('/logout')
 async def logout(request: Request):
-    request.session['username'] = None
-
+    request.session['email'] = None
     return HTMLResponse(views.index)
 
-async def _upload(file: object):
+async def _upload(file: object, email: str):
     grid_in = app.fs.open_upload_stream(
-        file.filename, metadata={'contentType': 'video/mp4'})
+        file.filename, metadata={'contentType': 'video/mp4', 'email': email})
     data = await file.read()
     await grid_in.write(data)
     await grid_in.close()  # uploaded on close
@@ -67,18 +67,23 @@ async def _upload(file: object):
 @app.post('/upload')
 async def upload(request: Request, file: UploadFile, background_tasks: BackgroundTasks):
     if request.session['email']:
-        background_tasks.add_task(_upload, file)
-        return 'uploading'
-    return 'upload failed'
+        if file.filename:
+            background_tasks.add_task(_upload, file, request.session['email'])
+            return HTMLResponse(f'<h3><a href="http://localhost/stream/{file.filename}" target="_blank">Play</a></h3>{views.index}')
+        return HTMLResponse(f'<h3>Please select a file to upload</h3>{views.index}')
+    return HTMLResponse(f'<h3>Please log in</h3>{views.index}')
 
 @app.get('/stream/{filename}')
-async def stream(filename):
-    grid_out = await app.fs.open_download_stream_by_name(filename)
-    async def read():
-        while grid_out.tell() < grid_out.length:
-            yield await grid_out.readchunk()
+async def stream(filename: str, request: Request):
+    if request.session['email']:
+        grid_out = await app.fs.open_download_stream_by_name(filename)
+        
+        async def read():
+            while grid_out.tell() < grid_out.length:
+                yield await grid_out.readchunk()
 
-    return StreamingResponse(read(), media_type='video/mp4', 
-        headers={'Content-Length': str(grid_out.length)})
+        return StreamingResponse(read(), media_type='video/mp4', 
+            headers={'Content-Length': str(grid_out.length)})
+    return HTMLResponse(f'<h3>Please log in</h3>{views.index}')
 
 app.add_middleware(SessionMiddleware, secret_key='abc')

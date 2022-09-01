@@ -21,6 +21,7 @@ async def sign_up(email: str = Form(), password: str = Form()):
 @app.post('/login')
 async def login(email: str = Form(), password: str = Form()):
     db_user = await app.users.users.find_one({'email': email})
-    if db_user['password'] == password:
-        return 0
+    if db_user:
+        if db_user['password'] == password:
+            return 0
     return 1
