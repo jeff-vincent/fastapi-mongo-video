@@ -84,7 +84,7 @@ async def upload(request: Request, file: UploadFile, background_tasks: Backgroun
             videos = await _get_videos(request)
             return HTMLResponse(f'{views.upload_block}{videos}{views.logout_block}')
         return HTMLResponse(f'<h3>Please select a file to upload</h3>{views.upload_block + views.logout_block}')
-    return HTMLResponse(f'<h3>Please log in</h3>{views.index}')
+    return HTMLResponse(f'<h3>Please log in</h3>{views.sign_up_login_block}')
 
 @app.get('/stream/{filename}')
 async def stream(filename: str, request: Request):
@@ -97,7 +97,7 @@ async def stream(filename: str, request: Request):
 
         return StreamingResponse(read(), media_type='video/mp4', 
             headers={'Content-Length': str(grid_out.length)})
-    return HTMLResponse(f'<h3>Please log in</h3>{views.index}')
+    return HTMLResponse(f'<h3>Please log in</h3>{views.sign_up_login_block}')
 
 async def _get_videos(request: object):
     videos = app.library.find({'email': request.session['email']})
