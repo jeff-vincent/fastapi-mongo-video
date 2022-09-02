@@ -8,6 +8,7 @@ from starlette.middleware.sessions import SessionMiddleware
 import views
 
 app = FastAPI()
+PROTOCOL = os.environ.get('PROTOCOL')
 HOST = os.environ.get('HOST')
 MONGO_HOST = os.environ.get('MONGO_HOST')
 MONGO_PORT = os.environ.get('MONGO_PORT')
@@ -105,7 +106,7 @@ async def _get_videos(request: object):
     video_urls = ''
     for i in docs:
         filename = i['filename']
-        v = f'<a href="http://{HOST}/stream/{filename}" target="_blank">http://{HOST}/stream/{filename}</a>'
+        v = f'<a href="{PROTOCOL}://{HOST}/stream/{filename}" target="_blank">http://{HOST}/stream/{filename}</a>'
         video_urls = video_urls + '<br>' + v
     return video_urls
 

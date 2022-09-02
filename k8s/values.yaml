@@ -5,3 +5,4 @@ mongo_host: mongo
 ingress_host: null
 ingress_class_name: kong
 host: "127.0.0.1"
+protocol: "http"

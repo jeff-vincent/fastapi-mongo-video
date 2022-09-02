@@ -4,7 +4,7 @@ kind: Deployment
 metadata:
   annotations:
     velocity.tech.v1/id: web-api
-    velocity.tech.v1/dependsOn: redis
+    velocity.tech.v1/dependsOn: mongodb
   name: web-api
   labels:
     app: web-api
@@ -23,6 +23,8 @@ spec:
         - name: web-api
           image: jdvincent/video_api:latest
           env:
+            - name: PROTOCOL
+              value: {{ .Values.protocol | toJson  }}
             - name: HOST
               value: {{ .Values.host | toJson  }}
             - name: AUTH_HOST
