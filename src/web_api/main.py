@@ -8,6 +8,7 @@ from starlette.middleware.sessions import SessionMiddleware
 import views
 
 app = FastAPI()
+HOST = os.environ.get('HOST')
 MONGO_HOST = os.environ.get('MONGO_HOST')
 MONGO_PORT = os.environ.get('MONGO_PORT')
 AUTH_HOST = os.environ.get('AUTH_HOST')
@@ -51,7 +52,7 @@ async def login(request: Request, email: str = Form(), password: str = Form()):
     if '1' in r:
         return HTMLResponse(f'<h3>Login failed</h3>{views.sign_up_login_block}')
     request.session['email'] = email
-    videos = await _get_videos(email)
+    videos = await _get_videos(request)
     return HTMLResponse(f'<h3>Logged in as "{email}"</h3>{views.upload_block}{videos}{views.logout_block}')
 
 @app.get('/logout')
@@ -80,7 +81,7 @@ async def upload(request: Request, file: UploadFile, background_tasks: Backgroun
             hash = await _generate_hash()
             background_tasks.add_task(_upload, file, hash)
             background_tasks.add_task(_add_library_record, request.session['email'], hash)
-            videos = await _get_videos(request.session['email'])
+            videos = await _get_videos(request)
             return HTMLResponse(f'{views.upload_block}{videos}{views.logout_block}')
         return HTMLResponse(f'<h3>Please select a file to upload</h3>{views.upload_block + views.logout_block}')
     return HTMLResponse(f'<h3>Please log in</h3>{views.index}')
@@ -98,13 +99,13 @@ async def stream(filename: str, request: Request):
             headers={'Content-Length': str(grid_out.length)})
     return HTMLResponse(f'<h3>Please log in</h3>{views.index}')
 
-async def _get_videos(email: str):
-    videos = app.library.find({'email': email})
+async def _get_videos(request: object):
+    videos = app.library.find({'email': request.session['email']})
     docs = await videos.to_list(None)
     video_urls = ''
     for i in docs:
         filename = i['filename']
-        v = f'<a href="http://localhost/stream/{filename}" target="_blank">http://localhost/stream/{filename}</a>'
+        v = f'<a href="http://{HOST}/stream/{filename}" target="_blank">http://{HOST}/stream/{filename}</a>'
         video_urls = video_urls + '<br>' + v
     return video_urls
 

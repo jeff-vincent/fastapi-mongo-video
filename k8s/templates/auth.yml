@@ -1,0 +1,42 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    velocity.tech.v1/id: auth
+    velocity.tech.v1/dependsOn: mongodb
+  name: auth
+  labels:
+    app: auth
+spec:
+  selector:
+    matchLabels:
+      api: auth
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: auth
+        api: auth
+    spec:
+      containers:
+        - name: api
+          image: jdvincent/video_auth:latest
+          env:
+            - name: MONGO_HOST
+              value: {{ .Values.mongo_host | toJson  }}
+            - name: MONGO_PORT
+              value: {{ .Values.mongo_port | toJson  }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth
+spec:
+  ports:
+    - port: 8000
+      targetPort: 8000
+      name: auth
+  selector:
+    app: auth
+  type: ClusterIP

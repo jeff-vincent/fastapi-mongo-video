@@ -1,0 +1,7 @@
+auth_host: auth
+auth_port: "8000"
+mongo_port: "27017"
+mongo_host: mongo
+ingress_host: null
+ingress_class_name: kong
+host: "127.0.0.1"

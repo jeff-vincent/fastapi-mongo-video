@@ -1,11 +1,14 @@
+import os
 from fastapi import FastAPI, Form
 from motor.motor_asyncio import AsyncIOMotorClient
 
 app = FastAPI()
+MONGO_HOST = os.environ.get('MONGO_HOST')
+MONGO_PORT = os.environ.get('MONGO_PORT')
 
 @app.on_event('startup')
 async def get_users():
-    users_db = AsyncIOMotorClient('mongodb://db:27017').users
+    users_db = AsyncIOMotorClient(f'mongodb://{MONGO_HOST}:{MONGO_PORT}').users
     app.users = users_db
 
 @app.post('/sign-up')
