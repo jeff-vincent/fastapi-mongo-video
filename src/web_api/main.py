@@ -8,6 +8,7 @@ from starlette.middleware.sessions import SessionMiddleware
 import views
 
 app = FastAPI()
+app.add_middleware(SessionMiddleware, secret_key='abc')
 PROTOCOL = os.environ.get('PROTOCOL')
 HOST = os.environ.get('HOST')
 MONGO_HOST = os.environ.get('MONGO_HOST')
@@ -22,8 +23,13 @@ async def get_mongo():
     app.fs = AsyncIOMotorGridFSBucket(video_db)
 
 @app.get('/')
-async def index():
-    return HTMLResponse(views.sign_up_login_block)
+async def index(request: Request):
+    try:
+        if request.session['email']:
+            videos = await _get_videos(request)
+            return HTMLResponse(f'<h3>Logged in as "{request.session["email"]}"</h3>{views.upload_block}{videos}{views.logout_block}')
+    except:
+        return HTMLResponse(views.sign_up_login_block)
 
 @app.post('/sign-up')
 async def sign_up(email: str = Form(), password: str = Form()):
@@ -61,6 +67,16 @@ async def logout(request: Request):
     request.session['email'] = None
     return HTMLResponse(views.sign_up_login_block)
 
+async def _get_videos(request: object):
+    videos = app.library.find({'email': request.session['email']})
+    docs = await videos.to_list(None)
+    video_urls = ''
+    for i in docs:
+        filename = i['filename']
+        v = f'<a href="{PROTOCOL}://{HOST}/stream/{filename}" target="_blank">http://{HOST}/stream/{filename}</a>'
+        video_urls = video_urls + '<br>' + v
+    return video_urls
+
 async def _generate_hash():
     return binascii.hexlify(os.urandom(16)).decode('utf-8')
 
@@ -83,7 +99,7 @@ async def upload(request: Request, file: UploadFile, background_tasks: Backgroun
             background_tasks.add_task(_upload, file, hash)
             background_tasks.add_task(_add_library_record, request.session['email'], hash)
             videos = await _get_videos(request)
-            return HTMLResponse(f'{views.upload_block}{videos}{views.logout_block}')
+            return HTMLResponse(f'{views.upload_block}{videos}{views.video_library_block}{views.logout_block}')
         return HTMLResponse(f'<h3>Please select a file to upload</h3>{views.upload_block + views.logout_block}')
     return HTMLResponse(f'<h3>Please log in</h3>{views.sign_up_login_block}')
 
@@ -99,15 +115,3 @@ async def stream(filename: str, request: Request):
         return StreamingResponse(read(), media_type='video/mp4', 
             headers={'Content-Length': str(grid_out.length)})
     return HTMLResponse(f'<h3>Please log in</h3>{views.sign_up_login_block}')
-
-async def _get_videos(request: object):
-    videos = app.library.find({'email': request.session['email']})
-    docs = await videos.to_list(None)
-    video_urls = ''
-    for i in docs:
-        filename = i['filename']
-        v = f'<a href="{PROTOCOL}://{HOST}/stream/{filename}" target="_blank">http://{HOST}/stream/{filename}</a>'
-        video_urls = video_urls + '<br>' + v
-    return video_urls
-
-app.add_middleware(SessionMiddleware, secret_key='abc')

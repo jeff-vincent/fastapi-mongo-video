@@ -26,3 +26,7 @@ logout_block = """
         <form action="/logout" method="get">
             <p><input type=submit value="Logout">
         </form>"""
+video_library_block = """
+        <form action="/" method="get">
+            <p><input type=submit value="Updated Video Library">
+        </form>"""
