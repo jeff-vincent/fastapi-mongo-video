@@ -5,10 +5,14 @@ from fastapi import FastAPI, BackgroundTasks, UploadFile, Request, Form
 from fastapi.responses import  HTMLResponse, StreamingResponse
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorGridFSBucket
 from starlette.middleware.sessions import SessionMiddleware
+from starlette_exporter import PrometheusMiddleware, handle_metrics
 import views
 
 app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key='abc')
+app.add_middleware(PrometheusMiddleware)
+app.add_route("/metrics", handle_metrics)
+
 PROTOCOL = os.environ.get('PROTOCOL')
 HOST = os.environ.get('HOST')
 MONGO_HOST = os.environ.get('MONGO_HOST')
