@@ -1,9 +1,5 @@
 # fastapi-mongo-video
 
-## Run in Docker Compose
-```shell
-docker-compose -f docker_compose.yml up
-```
 ## Run in Minikube
 ```shell
 minikube start
