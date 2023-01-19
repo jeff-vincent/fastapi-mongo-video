@@ -3,24 +3,24 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    velocity.tech.v1/id: web-api
+    velocity.tech.v1/id: web-api-a
     velocity.tech.v1/dependsOn: mongodb
-  name: web-api
+  name: web-api-a
   labels:
-    app: web-api
+    app: web-api-a
 spec:
   selector:
     matchLabels:
-      api: web-api
+      api: web-api-a
   replicas: 3
   template:
     metadata:
       labels:
-        app: web-api
-        api: web-api
+        app: web-api-a
+        api: web-api-a
     spec:
       containers:
-        - name: web-api
+        - name: web-api-a
           image: jdvincent/video_api:latest
           env:
             - name: PROTOCOL
@@ -36,27 +36,27 @@ spec:
             - name: MONGO_PORT
               value: {{ .Values.mongo_port | toJson  }}
           ports:
-            - name: web-api
+            - name: web-api-a
               containerPort: 8000
               protocol: TCP
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: web-api
+  name: web-api-a
 spec:
   ports:
     - port: 8000
       targetPort: 8000
-      name: web-api
+      name: web-api-a
   selector:
-    app: web-api
+    app: web-api-a
   type: ClusterIP
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: web-api
+  name: web-api-a
 spec:
   ingressClassName: {{ .Values.ingress_class_name | toJson }}
   rules:
@@ -67,6 +67,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: web-api
+                name: web-api-a
                 port:
                   number: 8000
