@@ -26,7 +26,7 @@ async def get_mongo():
     app.library = video_db.library
     app.fs = AsyncIOMotorGridFSBucket(video_db)
 
-@app.get('/')
+@app.get('/app')
 async def index(request: Request):
     try:
         if request.session['email']:
@@ -35,7 +35,7 @@ async def index(request: Request):
     except:
         return HTMLResponse(views.sign_up_login_block)
 
-@app.post('/sign-up')
+@app.post('/app/sign-up')
 async def sign_up(email: str = Form(), password: str = Form()):
     user_data = {'email': email, 'password': password}
     try:
@@ -49,7 +49,7 @@ async def sign_up(email: str = Form(), password: str = Form()):
         return HTMLResponse(f'<h3>An account already exists with that email</h3>{views.sign_up_login_block}')
     return HTMLResponse(views.sign_up_login_block)
 
-@app.post('/login')
+@app.post('/app/app-login')
 async def login(request: Request, email: str = Form(), password: str = Form()):
     user_data = {'email': email, 'password': password}
     try:
@@ -66,7 +66,7 @@ async def login(request: Request, email: str = Form(), password: str = Form()):
     videos = await _get_videos(request)
     return HTMLResponse(f'<h3>Logged in as "{email}"</h3>{views.upload_block}{videos}{views.logout_block}')
 
-@app.get('/logout')
+@app.get('/app/logout')
 async def logout(request: Request):
     request.session['email'] = None
     return HTMLResponse(views.sign_up_login_block)
@@ -77,7 +77,7 @@ async def _get_videos(request: object):
     video_urls = ''
     for i in docs:
         filename = i['filename']
-        v = f'<a href="{PROTOCOL}://{HOST}/stream/{filename}" target="_blank">http://{HOST}/stream/{filename}</a>'
+        v = f'<a href="{PROTOCOL}://{HOST}/app/stream/{filename}" target="_blank">http://{HOST}/stream/{filename}</a>'
         video_urls = video_urls + '<br>' + v
     return video_urls
 
@@ -95,7 +95,7 @@ async def _upload(file: object, hash: str):
     await grid_in.write(data)
     await grid_in.close()  # uploaded on close
 
-@app.post('/upload')
+@app.post('/app/upload')
 async def upload(request: Request, file: UploadFile, background_tasks: BackgroundTasks):
     if request.session['email']:
         if file.filename:
@@ -107,7 +107,7 @@ async def upload(request: Request, file: UploadFile, background_tasks: Backgroun
         return HTMLResponse(f'<h3>Please select a file to upload</h3>{views.upload_block + views.logout_block}')
     return HTMLResponse(f'<h3>Please log in</h3>{views.sign_up_login_block}')
 
-@app.get('/stream/{filename}')
+@app.get('/app/stream/{filename}')
 async def stream(filename: str, request: Request):
     if request.session['email']:
         grid_out = await app.fs.open_download_stream_by_name(filename)
